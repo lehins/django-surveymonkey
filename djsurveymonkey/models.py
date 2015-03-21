@@ -18,6 +18,9 @@ class Template(models.Model):
     category_desciption = models.CharField(max_length=255)
     date_created = models.DateTimeField(null=True)
     date_modified = models.DateTimeField(null=True)
+
+    class Meta:
+        db_table = 'surveymonkey_template'
     
 
 class Page(models.Model):
@@ -26,14 +29,20 @@ class Page(models.Model):
     heading = models.CharField(max_length=255)
     sub_heading = models.CharField(max_length=255)
 
+    class Meta:
+        db_table = 'surveymonkey_page'
 
+        
 class Item(models.Model):
     answer = models.ForeignKey('Answer', related_name='items')
     position = models.PositiveIntegerField()
     type = models.CharField(max_length=255)
     text = models.CharField(max_length=255)
         
+    class Meta:
+        db_table = 'surveymonkey_item'
 
+        
 class Answer(models.Model):
     answer_id = models.CharField(max_length=255, primary_key=True)
     position = models.PositiveIntegerField()
@@ -42,9 +51,12 @@ class Answer(models.Model):
     visible = models.BooleanField()
     weight = models.PositiveIntegerField()
     apply_all_rows = models.BooleanField()
-    is_answer = models.BooleanField
+    is_answer = models.BooleanField()
 
-    
+    class Meta:
+        db_table = 'surveymonkey_answer'
+
+        
 class Question(models.Model):
     question_id = models.CharField(max_length=255, primary_key=True)
     page = models.ForeignKey(Page, related_name='questions')
@@ -53,12 +65,18 @@ class Question(models.Model):
     type_family = models.CharField(max_length=255)
     type_subtype = models.CharField(max_length=255)
 
+    class Meta:
+        db_table = 'surveymonkey_question'
+
         
 class CustomVariable(models.Model):
     variable_label = models.CharField(max_length=255)
     question = models.ForeignKey(Question)
     survey = models.ForeignKey('Survey', related_name='custom_variables')
-    
+
+    class Meta:
+        db_table = 'surveymonkey_custom_variable'
+
     
 class Survey(models.Model):
     survey_id = models.CharField(max_length=255, primary_key=True)
@@ -75,6 +93,9 @@ class Survey(models.Model):
     title_text = models.CharField(max_length=255)
     analysis_url = models.URLField(max_length=255)
 
+    class Meta:
+        db_table = 'surveymonkey_survey'
+
 
 class Collector(models.Model):
     collector_id = models.CharField(max_length=255, primary_key=True)
@@ -85,13 +106,19 @@ class Collector(models.Model):
     type = models.CharField(max_length=255)
     url = models.URLField(max_length=255)
 
+    class Meta:
+        db_table = 'surveymonkey_collector'
 
+    
 class EmailMessage(models.Model):
     email_message_id = models.CharField(max_length=255, primary_key=True)
     reply_email = models.EmailField()
-    subject = models.CharFeild(max_length=255)
+    subject = models.CharField(max_length=255)
     body_text = models.TextField(null=True)
 
+    class Meta:
+        db_table = 'surveymonkey_email_message'
+    
 
 class Recipient(models.Model):
     recipient_id = models.CharField(max_length=255, primary_key=True)
@@ -101,8 +128,11 @@ class Recipient(models.Model):
     last_name = models.CharField(max_length=255)
     custom_id = models.CharField(max_length=255)
 
+    class Meta:
+        db_table = 'surveymonkey_recipient'
+    
 
-class Repondent(models.Model):
+class Respondent(models.Model):
     respondent_id = models.CharField(max_length=255, primary_key=True)
     date_started = models.DateTimeField(null=True)
     date_modified = models.DateTimeField(null=True)
@@ -119,3 +149,7 @@ class Repondent(models.Model):
     status = models.CharField(max_length=255)
     analysis_url = models.URLField(max_length=255)
     recipient = models.ForeignKey(Recipient, null=True)
+
+    class Meta:
+        db_table = 'surveymonkey_respondent'
+    
