@@ -3,6 +3,10 @@ from django.utils.encoding import python_2_unicode_compatible
 
 from json_field import JSONField
 
+__all__ = [
+    'Template', 'Page', 'Item', 'Answer', 'Question', 'CustomVariable',
+    'Survey', 'Collector', 'EmailMessage', 'Recipient', 'Respondent', 'Response'
+]
 
 @python_2_unicode_compatible
 class Template(models.Model):
@@ -125,11 +129,21 @@ class Survey(models.Model):
 
     class Meta:
         db_table = 'surveymonkey_survey'
-    
-    def __str__(self):
-        if self.title and self.title.get('text'):
-            return self.title.get('text')
+
+    @property
+    def survey_title(self, value):
+        if isinstance(self.title, dict):
+            return self.title.get('text', self.nickname)
         return self.nickname
+
+    @survey_title.setter
+    def survey_title(self, value):
+        if not self.title:
+            self.title = {}
+        self.title['text'] = value
+        
+    def __str__(self):
+        return self.survey_title
 
 
 @python_2_unicode_compatible
@@ -141,6 +155,7 @@ class Collector(models.Model):
     open = models.NullBooleanField()
     type = models.CharField(max_length=255)
     url = models.URLField(max_length=255)
+    send = models.NullBooleanField()
 
     class Meta:
         db_table = 'surveymonkey_collector'
@@ -172,12 +187,12 @@ class Recipient(models.Model):
     last_name = models.CharField(max_length=255)
     custom_id = models.CharField(max_length=255)
     
-    def __str__(self):
-        return ("%s %s <%s>" % (self.first_name, self.last_name, self.email)).strip()
-
     class Meta:
         db_table = 'surveymonkey_recipient'
     
+    def __str__(self):
+        return ("%s %s <%s>" % (self.first_name, self.last_name, self.email)).strip()
+
 
 @python_2_unicode_compatible
 class Respondent(models.Model):
@@ -207,6 +222,7 @@ class Response(models.Model):
     respondent = models.ForeignKey(Respondent)
     question = models.ForeignKey(Question)
     answers = JSONField(null=True)        
+    date_retrieved = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'surveymonkey_response'

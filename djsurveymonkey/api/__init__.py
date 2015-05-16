@@ -72,8 +72,9 @@ class Batch(CallMixin, calls.Batch):
         ]))
 
     def _update_recipients(self, recipients, recipients_report, collector_id, commit=True):
-        recipient_ids = dict([(r.email, r.reipient_id)
-                              for r in recipients_report['recipients']])
+        recipient_ids = dict([(r['email'], r['reipient_id'])
+                              for r in recipients_report['recipients']
+                              if 'email' in r and 'reipient_id' in r])
         added_recipients = []
         for recipient in recipients:
             recipient.recipient_id = recipient_ids.get(recipient.email, '')
@@ -88,7 +89,7 @@ class Batch(CallMixin, calls.Batch):
         email_message_response = response.data.get('email_message')
         if email_message_response:
             self.update_from_response(email_message, email_message_response)
-        recipients_report = response.get('recipients_report')
+        recipients_report = response.data.get('recipients_report')
         if recipients_report:
             self._update_recipients(recipients, recipients_report, collector.pk)
         response.survey = survey
@@ -97,20 +98,22 @@ class Batch(CallMixin, calls.Batch):
         return response                    
 
     def create_flow(self, survey, collector, recipients, email_message):
-        # for some reason the param in create_flow is "survey_title" instead of "title",
-        # like in other calls.
+        # the param in create_flow is "survey_title" instead of "title",
+        # or title['text'] like in other calls.
         params = {
             'survey': objects.Survey(
-                survey.title, 
+                survey.survey_title, 
                 **model_to_dict(survey, fields=['template_id', 'from_survey_id'])),
             'collector': objects.Collector(
                 recipients=map(self._recipient_to_object, recipients),
                 **model_to_dict(collector, fields=['type', 'name', 'send'])),
             'email_message': objects.EmailMessage(
                 **model_to_dict(email_message, fields=[
-                    'reply_email', 'first_name', 'last_name', 'custom_id']))
+                    'reply_email', 'subject', 'body_text']))
         }
-        return self._update_from_response(super(Batch, self).create_flow(**params))
+        response = super(Batch, self).create_flow(**params)
+        return self._update_from_response(
+            survey, collector, recipients, email_message, response)
 
     def send_flow(self, survey, collector, recipients, email_message):
         params = {
@@ -119,9 +122,11 @@ class Batch(CallMixin, calls.Batch):
                 **model_to_dict(collector, fields=['type', 'name', 'send'])),
             'email_message': objects.EmailMessage(
                 **model_to_dict(email_message, fields=[
-                    'reply_email', 'first_name', 'last_name', 'custom_id']))
+                    'reply_email', 'subject', 'body_text']))
         }
-        return self._update_from_response(super(Batch, self).send_flow(survey.pk, **params))
+        response = super(Batch, self).send_flow(survey.pk, **params)
+        return self._update_from_response(
+            survey, collector, recipients, email_message, response)
 
 
 class Surveys(CallMixin, calls.Surveys):
@@ -137,6 +142,17 @@ class Surveys(CallMixin, calls.Surveys):
         response.survey = self.update_from_response(survey, response.data)
         return response
 
+
+class Collectors(CallMixin, calls.Collectors):
+
+    def create_collector(self, survey, collector):
+        response = super(Collectors, self).create_collector(
+            survey.pk, objects.Collector(
+                **model_to_dict(collector, fields=['type', 'name'])))
+        response.collector = self.update_from_response(collector, response.data)
+        response.collector.survey = survey
+        return response
+
         
 class SurveyMonkey(api.SurveyMonkey):
 
@@ -148,7 +164,7 @@ class SurveyMonkey(api.SurveyMonkey):
             API_KEY, access_token=access_token, silent=silent, **kwargs)
 
     def call(self, *args, **kwargs):
-        # a temporarly way of reducing chance of throttling
+        # a temporary way of reducing chance of throttling
         time.sleep(1)
         return super(SurveyMonkey, self).call(*args, **kwargs)
 
@@ -159,3 +175,7 @@ class SurveyMonkey(api.SurveyMonkey):
     @cached_property
     def surveys(self):
         return Surveys(self)
+
+    @cached_property
+    def collectors(self):
+        return Collectors(self)
